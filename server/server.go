@@ -28,7 +28,7 @@ func (s *mathsServer) Squares (stream mathspb.Maths_SquaresServer)  error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Received %v\n", in.Number)
+		log.Printf("Received %v\n", in.Number)
 		square := in.Number * in.Number
 		resp := &mathspb.SquaresResponse{
 			Number: in.Number,

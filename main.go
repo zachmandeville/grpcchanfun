@@ -34,6 +34,7 @@ func runSquares (client mathspb.MathsClient, nums chan int32, ch chan string, do
 			in, err := stream.Recv()
 			if err == io.EOF {
 				close(ch)
+				log.Println("no more numbers from server")
 				done <- true
 				return
 			}
@@ -41,6 +42,7 @@ func runSquares (client mathspb.MathsClient, nums chan int32, ch chan string, do
 				log.Fatalf("Failed to receive number to square: %v\n", err)
 			}
 			result := fmt.Sprintf("The Square of %v is %v", in.Number, in.Square)
+			log.Printf("received %v/%v from server", in.Number, in.Square)
 			ch <- result
 		}
 	}()
@@ -49,7 +51,7 @@ func runSquares (client mathspb.MathsClient, nums chan int32, ch chan string, do
 	// this function doesn't control whether the num channel closes,
 	// that is handled outside this function.
 	for num := range nums {
-		fmt.Printf("received %v from channel\n", num)
+		log.Printf("received %v from channel\n", num)
 		request := &mathspb.SquaresRequest{
 			Number: num,
 		}
@@ -57,6 +59,7 @@ func runSquares (client mathspb.MathsClient, nums chan int32, ch chan string, do
 			log.Fatalf("error sending number: %v", num)
 		}
 	}
+	log.Println("number loop ended")
 	stream.CloseSend()
 	wg.Wait() // keep the for loops running until we are fully done sending all our numbers to the server.
 }
@@ -83,13 +86,13 @@ func main () {
 		  rand.Seed(time.Now().UnixNano())
 		  n := rand.Intn(12 - 1) + 1
 			if n == 7 {
-				fmt.Println("sending lucky number 7 across channel")
+				log.Println("sending lucky number 7 across channel")
 				nums <- int32(n)
 				close(nums)
 				return
 
 			} else {
-				fmt.Printf("sending %v across channel\n",n)
+				log.Printf("sending %v across channel\n",n)
 				nums <- int32(n)
 			}
 		}
