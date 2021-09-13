@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "github.com/zachmandeville/grpc-chan-fun/api/maths";
+
+package maths;
+
+service Maths {
+  rpc Squares (stream SquaresRequest) returns (stream SquaresResponse) {};
+}
+
+message SquaresRequest {
+  int32 number = 1;
+}
+
+message SquaresResponse {
+  int32 square = 1;
+  int32 number = 2;
+}
