@@ -5,17 +5,21 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
+	"os"
 	"sync"
 	"time"
 
 	mathspb "github.com/zachmandeville/grpcchanfun/api/maths"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 )
 
 var (
 	serverAddr = flag.String("server_addr", "localhost:10000", "The server address")
+	debug = flag.Bool("debug", false, "sets log level to debug")
 )
 
 func runSquares(client mathspb.MathsClient, nums chan int32, ch chan string) {
@@ -26,7 +30,9 @@ func runSquares(client mathspb.MathsClient, nums chan int32, ch chan string) {
 
 	stream, err := client.Squares(ctx)
 	if err != nil {
-		log.Fatalf("%v.Squares(_) = _, %v", client, err)
+		log.Fatal().
+			Err(err).
+     		Msgf("%v.Squares(_) = _, %v", client, err)
 	}
 
 	// receiving stream for our gRPC server
@@ -37,15 +43,19 @@ func runSquares(client mathspb.MathsClient, nums chan int32, ch chan string) {
 			wg.Add(1)
 			in, err := stream.Recv()
 			if err == io.EOF {
-				log.Println("no more numbers from server")
+				log.Debug().
+					Msg("No more numbers from server")
 				close(ch)
 				return
 			}
 			if err != nil {
-				log.Fatalf("Failed to receive number to square: %v\n", err)
+				log.Fatal().
+					Err(err).
+					Msg("Failed to receive a number to square")
 			}
 			result := fmt.Sprintf("The Square of %v is %v", in.Number, in.Square)
-			log.Printf("received %v/%v from server", in.Number, in.Square)
+			log.Debug().
+				Msgf("received %v/%v from server\n", in.Number, in.Square)
 			ch <- result
 		}
 	}()
@@ -54,23 +64,39 @@ func runSquares(client mathspb.MathsClient, nums chan int32, ch chan string) {
 	// this for loop will run until the num channel closes.
 	// that is handled outside this function.
 	for num := range nums {
-		log.Printf("received %v from channel\n", num)
+		log.Debug().
+			Msgf("received %v from channel\n", num)
 		request := &mathspb.SquaresRequest{
 			Number: num,
 		}
 		if err := stream.Send(request); err != nil {
-			log.Fatalf("error sending number: %v", num)
+			log.Fatal().
+				Err(err).
+				Msgf("error sending number: %v", num)
 		}
 	}
-	log.Println("number loop ended")
+	log.Debug().
+		Msg("number loop ended")
 	stream.CloseSend()
 	wg.Wait() // keep the for loops running until we've received all squares from our server.
+}
+
+func init() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	flag.Parse()
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if *debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
 }
 
 func main() {
 	conn, err := grpc.Dial(*serverAddr, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("unable to connect to server: %v", err)
+		log.Fatal().
+			Err(err).
+			Msg("unable to connect to gRPC server")
 	}
 	defer conn.Close()
 
@@ -88,13 +114,15 @@ func main() {
 			rand.Seed(time.Now().UnixNano())
 			n := rand.Intn(12-1) + 1
 			if n == 7 {
-				log.Println("sending lucky number 7 across channel")
+				log.Debug().
+					Msg("sending lucky number 7 across channel")
 				nums <- int32(n)
 				close(nums)
 				return
 
 			} else {
-				log.Printf("sending %v across channel\n", n)
+				log.Debug().
+					Msgf("sending %v across channel\n", n)
 				nums <- int32(n)
 			}
 		}
@@ -102,6 +130,7 @@ func main() {
 
 	// keep the for loop going until the ch channel is closed,
 	for msg := range ch {
-		fmt.Println(msg)
+		log.Info().
+			Msg(msg)
 	}
 }
