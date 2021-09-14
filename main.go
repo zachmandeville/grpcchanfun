@@ -12,6 +12,8 @@ import (
 
 	mathspb "github.com/zachmandeville/grpcchanfun/api/maths"
 
+	"github.com/cucumber/godog"
+	"github.com/cucumber/godog/colors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
@@ -19,7 +21,10 @@ import (
 
 var (
 	serverAddr = flag.String("server_addr", "localhost:10000", "The server address")
-	debug = flag.Bool("debug", false, "sets log level to debug")
+	debug      = flag.Bool("debug", false, "sets log level to debug")
+	godogOpts  = godog.Options{
+		Output:      colors.Colored(os.Stdout),
+	}
 )
 
 func runSquares(client mathspb.MathsClient, nums chan int32, ch chan string) {
@@ -32,7 +37,7 @@ func runSquares(client mathspb.MathsClient, nums chan int32, ch chan string) {
 	if err != nil {
 		log.Fatal().
 			Err(err).
-     		Msgf("%v.Squares(_) = _, %v", client, err)
+			Msgf("%v.Squares(_) = _, %v", client, err)
 	}
 
 	// receiving stream for our gRPC server
@@ -82,13 +87,16 @@ func runSquares(client mathspb.MathsClient, nums chan int32, ch chan string) {
 }
 
 func init() {
+	flag.Parse()
+
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	flag.Parse()
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if *debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
+
+	godog.BindCommandLineFlags("godog.", &godogOpts)
 }
 
 func main() {
@@ -133,4 +141,9 @@ func main() {
 		log.Info().
 			Msg(msg)
 	}
+	status := godog.TestSuite{
+		Name:                 "xDS Test Suite",
+		Options:              &godogOpts,
+	}.Run()
+	os.Exit(status)
 }
