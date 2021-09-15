@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MathsClient interface {
 	Squares(ctx context.Context, opts ...grpc.CallOption) (Maths_SquaresClient, error)
+	Cubes(ctx context.Context, opts ...grpc.CallOption) (Maths_CubesClient, error)
 }
 
 type mathsClient struct {
@@ -60,11 +61,43 @@ func (x *mathsSquaresClient) Recv() (*SquaresResponse, error) {
 	return m, nil
 }
 
+func (c *mathsClient) Cubes(ctx context.Context, opts ...grpc.CallOption) (Maths_CubesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Maths_ServiceDesc.Streams[1], "/maths.Maths/Cubes", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &mathsCubesClient{stream}
+	return x, nil
+}
+
+type Maths_CubesClient interface {
+	Send(*CubesRequest) error
+	Recv() (*CubesResponse, error)
+	grpc.ClientStream
+}
+
+type mathsCubesClient struct {
+	grpc.ClientStream
+}
+
+func (x *mathsCubesClient) Send(m *CubesRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *mathsCubesClient) Recv() (*CubesResponse, error) {
+	m := new(CubesResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // MathsServer is the server API for Maths service.
 // All implementations must embed UnimplementedMathsServer
 // for forward compatibility
 type MathsServer interface {
 	Squares(Maths_SquaresServer) error
+	Cubes(Maths_CubesServer) error
 	mustEmbedUnimplementedMathsServer()
 }
 
@@ -74,6 +107,9 @@ type UnimplementedMathsServer struct {
 
 func (UnimplementedMathsServer) Squares(Maths_SquaresServer) error {
 	return status.Errorf(codes.Unimplemented, "method Squares not implemented")
+}
+func (UnimplementedMathsServer) Cubes(Maths_CubesServer) error {
+	return status.Errorf(codes.Unimplemented, "method Cubes not implemented")
 }
 func (UnimplementedMathsServer) mustEmbedUnimplementedMathsServer() {}
 
@@ -114,6 +150,32 @@ func (x *mathsSquaresServer) Recv() (*SquaresRequest, error) {
 	return m, nil
 }
 
+func _Maths_Cubes_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(MathsServer).Cubes(&mathsCubesServer{stream})
+}
+
+type Maths_CubesServer interface {
+	Send(*CubesResponse) error
+	Recv() (*CubesRequest, error)
+	grpc.ServerStream
+}
+
+type mathsCubesServer struct {
+	grpc.ServerStream
+}
+
+func (x *mathsCubesServer) Send(m *CubesResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *mathsCubesServer) Recv() (*CubesRequest, error) {
+	m := new(CubesRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Maths_ServiceDesc is the grpc.ServiceDesc for Maths service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -125,6 +187,12 @@ var Maths_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Squares",
 			Handler:       _Maths_Squares_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "Cubes",
+			Handler:       _Maths_Cubes_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
