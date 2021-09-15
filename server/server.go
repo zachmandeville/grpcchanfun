@@ -40,6 +40,27 @@ func (s *mathsServer) Squares (stream mathspb.Maths_SquaresServer)  error {
 	}
 }
 
+func (s *mathsServer) Cubes (stream mathspb.Maths_CubesServer) error {
+	for {
+		in, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		log.Printf("Received to cube: %v\n", in.Number)
+		cube := in.Number * in.Number * in.Number
+		resp := &mathspb.CubesResponse{
+			Number: in.Number,
+			Cube: cube,
+		}
+		if err := stream.Send(resp); err != nil {
+			return err
+		}
+	}
+}
+
 func newServer() *mathsServer {
 	return &mathsServer{}
 }
