@@ -6,6 +6,7 @@ package maths;
 
 service Maths {
   rpc Squares (stream SquaresRequest) returns (stream SquaresResponse) {};
+  rpc Cubes (stream CubesRequest) returns (stream CubesResponse) {};
 }
 
 message SquaresRequest {
@@ -14,5 +15,15 @@ message SquaresRequest {
 
 message SquaresResponse {
   int32 square = 1;
+  int32 number = 2;
+}
+
+
+message CubesRequest {
+  int32 number = 1;
+}
+
+message CubesResponse {
+  int32 cube   = 1;
   int32 number = 2;
 }
